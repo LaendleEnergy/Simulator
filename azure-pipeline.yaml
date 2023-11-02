@@ -24,6 +24,7 @@ pool:
 
 stages:
 - stage: build_test
+  condition: eq('${{ parameters.push }}', false)
   displayName: Build Image
   jobs:
   - ${{ each file in parameters.dockerfiles }}:
