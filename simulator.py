@@ -3,14 +3,14 @@ import time
 import datetime
 import paho.mqtt.client as mqtt
 import struct
-from calendar import timegm
-import sys
 import ssl
+import os
 
 # MQTT broker settings
-broker_address = "45.145.224.10"  # Replace with your MQTT broker's address
-broker_port = 1884  # Default MQTT port
-topic = "smartmeter"  # Replace with the desired MQTT topic
+broker_address = os.getenv("BROKER_ADDRESS", "45.145.224.10")
+broker_port = str(os.getenv("BROKER_PORT", "1883"))
+topic = os.getenv("ROOT_TOPIC", "smartmeter")
+filename = os.getenv("DATA_FILE_NAME", "mqtt_messages_2.json")
 
 OBIS_CODE = {
     "1.7.0": "Momentane Wirkleistung P+ [W]",
@@ -75,7 +75,10 @@ def send_if_new_data(id, new_message):
 
 
 if __name__ == "__main__":
-    filename = 'mqtt_messages_2.json'
+    print("broker_address:", broker_address)
+    print("broker_port:", broker_port)
+    print("topic:", topic)
+    print("filename:", filename)
 
     # Create an MQTT client
     client = mqtt.Client()
@@ -84,14 +87,17 @@ if __name__ == "__main__":
     print("connecting to broker...")
     client.tls_set(ca_certs="./certs/ca.crt", certfile="./certs/client.crt", keyfile="./certs/client.key", cert_reqs=ssl.CERT_REQUIRED)
     client.tls_insecure_set(True)
-    result = client.connect(broker_address, broker_port, keepalive=60)
+    result = client.connect(broker_address, int(broker_port, 10), keepalive=60)
+    print("connected")
 
     # Start the MQTT client loop (non-blocking)
     client.loop_start()
 
-    id = "12345678"
-
+    print("opening file", filename)
     input = open(filename, 'r')
+    print("file opened")
+
+    print("start publishing simulatordata from file " + filename + " to topic " + topic)
 
     while True:
         line = input.readline()
@@ -99,8 +105,8 @@ if __name__ == "__main__":
             try:
                 line = line.replace('"message": ', '')
                 data_obj = json.loads(line)
-                print(json.dumps(data_obj))
-                send_if_new_data(id, data_obj)
+                print("sent data", json.dumps(data_obj))
+                send_if_new_data(topic, data_obj)
             except:
                 pass
         time.sleep(5)
