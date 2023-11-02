@@ -5,10 +5,11 @@ import paho.mqtt.client as mqtt
 import struct
 from calendar import timegm
 import sys
+import ssl
 
 # MQTT broker settings
 broker_address = "45.145.224.10"  # Replace with your MQTT broker's address
-broker_port = 1883  # Default MQTT port
+broker_port = 1884  # Default MQTT port
 topic = "smartmeter"  # Replace with the desired MQTT topic
 
 OBIS_CODE = {
@@ -80,12 +81,13 @@ if __name__ == "__main__":
     client = mqtt.Client()
 
     # Connect to the MQTT broker
-    client.connect(broker_address, broker_port, keepalive=60)
+    print("connecting to broker...")
+    client.tls_set(ca_certs="./certs/ca.crt", certfile="./certs/client.crt", keyfile="./certs/client.key", cert_reqs=ssl.CERT_REQUIRED)
+    client.tls_insecure_set(True)
+    result = client.connect(broker_address, broker_port, keepalive=60)
 
     # Start the MQTT client loop (non-blocking)
     client.loop_start()
-
-    file = open("data.txt", "w")
 
     id = "12345678"
 
@@ -97,7 +99,7 @@ if __name__ == "__main__":
             try:
                 line = line.replace('"message": ', '')
                 data_obj = json.loads(line)
-                #print(json.dumps(data_obj))
+                print(json.dumps(data_obj))
                 send_if_new_data(id, data_obj)
             except:
                 pass
