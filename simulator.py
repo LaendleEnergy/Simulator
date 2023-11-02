@@ -1,7 +1,10 @@
 import json
 import time
+import datetime
 import paho.mqtt.client as mqtt
-
+import struct
+from calendar import timegm
+import sys
 
 # MQTT broker settings
 broker_address = "45.145.224.10"  # Replace with your MQTT broker's address
@@ -13,9 +16,9 @@ OBIS_CODE = {
     "1.8.0": "Zählerstand Energie A+ [Wh]",
     "2.7.0": "Momentane Wirkleistung P- [W]",
     "2.8.0": "Zählerstand Energie A- [Wh]",
-    "3.8.0": "Zählerstand +Q [VAh]",
-    "4.8.0": "Zählerstand -Q [VAh]",
-    "16.7.0": "Momentane Wirkleistung P+- [W]",
+    # "3.8.0": "Zählerstand +Q [VAh]",
+    # "4.8.0": "Zählerstand -Q [VAh]",
+    # "16.7.0": "Momentane Wirkleistung P+- [W]",
     "31.7.0": "Momentaner Strom L1 [A]",
     "32.7.0": "Momentane Spannung L1 [V]",
     "51.7.0": "Momentaner Strom L2 [A]",
@@ -24,54 +27,48 @@ OBIS_CODE = {
     "72.7.0": "Momentane Spannung L3 [V]",
 }
 
-def receive_mbus(filename, interval=5):
-    with open(filename, 'r') as file:
-        while True:
-            data = ""
-            line = ""
-            while "}," not in line:
-                line=file.readline()
-                if "[" in line:
-                    continue
-                data+=line
-            data = data[:-2]
-            try:
-                data_obj = json.loads(data)
-                yield data_obj
-            except Exception as e:
-                print("JSON Error", e)
-                pass
-            time.sleep(interval)
-            if not line:
-                break  # End of file
+def packBinary(data):
+    utc_time = datetime.datetime.strptime(data["timestamp"], "%Y-%m-%dT%H:%M:%S")
+    epoch_time = (utc_time - datetime.datetime(1970, 1, 1)).total_seconds()
+    return struct.pack("Iffffffffff",
+        int(epoch_time),
+        float(data["1.7.0"]),
+        float(data["1.8.0"]),
+        float(data["2.7.0"]),
+        float(data["2.8.0"]),
+        float(data["31.7.0"]),
+        float(data["32.7.0"]),
+        float(data["51.7.0"]),
+        float(data["52.7.0"]),
+        float(data["71.7.0"]),
+        float(data["72.7.0"])
+    )
 
-last_new_message = {}
-last_new_message["31.7.0"] = "-" 
+last_new_message = None 
 counter_whole = 0
 counter_send = 0
-def send_if_new_data(data_new):
+def send_if_new_data(id, new_message):
     global last_new_message
     global counter_whole
     global counter_send
     offset = 0.05
     send = False
-    for key in data_new.keys():
+    for key in new_message.keys():
         if "timestamp" not in key and "uptime" not in key:
-            if last_new_message is not None and data_new[key] is not None and last_new_message[key] is not None:
-                datapoint_new = data_new[key]
+            if last_new_message is not None and key in new_message.keys() and key in last_new_message.keys():
+                datapoint_new = new_message[key]
                 datapoint_old = last_new_message[key]
                 if abs(float(datapoint_new) - float(datapoint_old)) > float(datapoint_old)*offset:
-                    print(abs(float(datapoint_new) - float(datapoint_old)), float(datapoint_old)*offset)
                     send = True
             else:
                 send = True
 
     if send:
-        client.publish(topic, json.dumps(data_new))
-        last_new_message = data_new
+        client.publish(id, packBinary(new_message))
+        last_new_message = new_message
         counter_send+=1
 
-    file.write(f"{last_new_message['31.7.0']}\n")
+    #file.write(f"{last_new_message['timestamp']};{new_message['31.7.0']};{last_new_message['31.7.0']}\n")
     counter_whole+=1
 
 
@@ -90,18 +87,20 @@ if __name__ == "__main__":
 
     file = open("data.txt", "w")
 
-    try:
-        while True:
-            for mbus_data in receive_mbus(filename, 5):
-                send_if_new_data(mbus_data["message"])
-                print(json.dumps(mbus_data, indent=2))
+    id = "12345678"
 
-    except Exception as e:
-        print(e)
-        print(f"Data points whole: {counter_whole}, data points send 5%: {counter_send}")
+    input = open(filename, 'r')
 
-    finally:
-        # Disconnect from the MQTT broker
-        client.disconnect()
-        client.loop_stop()
+    while True:
+        line = input.readline()
+        if "message" in line:
+            try:
+                line = line.replace('"message": ', '')
+                data_obj = json.loads(line)
+                #print(json.dumps(data_obj))
+                send_if_new_data(id, data_obj)
+            except:
+                pass
+        time.sleep(5)
+
 
