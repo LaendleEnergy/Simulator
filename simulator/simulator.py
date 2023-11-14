@@ -8,7 +8,7 @@ import os
 
 # MQTT broker settings
 broker_address = os.getenv("BROKER_ADDRESS", "45.145.224.10")
-broker_port = str(os.getenv("BROKER_PORT", "1883"))
+broker_port = str(os.getenv("BROKER_PORT", "1884"))
 topic = os.getenv("ROOT_TOPIC", "smartmeter")
 filename = os.getenv("DATA_FILE_NAME", "mqtt_messages_2.json")
 use_certificates = os.getenv("USE_CERTIFICATES", "true") == 'true'
