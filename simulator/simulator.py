@@ -11,6 +11,7 @@ broker_address = os.getenv("BROKER_ADDRESS", "45.145.224.10")
 broker_port = str(os.getenv("BROKER_PORT", "1883"))
 topic = os.getenv("ROOT_TOPIC", "smartmeter")
 filename = os.getenv("DATA_FILE_NAME", "mqtt_messages_2.json")
+use_certificates = os.getenv("USE_CERTIFICATES", "true") == 'true'
 
 OBIS_CODE = {
     "1.7.0": "Momentane Wirkleistung P+ [W]",
@@ -85,8 +86,10 @@ if __name__ == "__main__":
 
     # Connect to the MQTT broker
     print("connecting to broker...")
-    client.tls_set(ca_certs="./certs/ca.crt", certfile="./certs/client.crt", keyfile="./certs/client.key", cert_reqs=ssl.CERT_REQUIRED)
-    client.tls_insecure_set(True)
+    if use_certificates:
+        client.tls_set(ca_certs="./certs/ca.crt", certfile="./certs/client.crt", keyfile="./certs/client.key", cert_reqs=ssl.CERT_REQUIRED)
+        client.tls_insecure_set(True)
+
     result = client.connect(broker_address, int(broker_port, 10), keepalive=60)
     print("connected")
 
