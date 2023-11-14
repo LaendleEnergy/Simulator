@@ -112,6 +112,6 @@ if __name__ == "__main__":
                 send_if_new_data(topic, data_obj)
             except:
                 pass
-        time.sleep(5)
+            time.sleep(5)
 
 
