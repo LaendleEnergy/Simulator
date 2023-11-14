@@ -109,7 +109,8 @@ if __name__ == "__main__":
                 line = line.replace('"message": ', '')
                 data_obj = json.loads(line)
                 print("sent data", json.dumps(data_obj))
-                send_if_new_data(topic, data_obj)
+                #send_if_new_data(topic, data_obj)
+                client.publish("simulator", json.dumbs(data_obj))
             except:
                 pass
             time.sleep(5)
