@@ -80,6 +80,7 @@ if __name__ == "__main__":
     print("broker_port:", broker_port)
     print("topic:", topic)
     print("filename:", filename)
+    print("use_certificates", use_certificates)
 
     # Create an MQTT client
     client = mqtt.Client()
